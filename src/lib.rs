@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::BuildHasherDefault};
 
+use rustc_hash::FxHasher;
 use winnow::{
     ascii::{alpha1, multispace0},
     combinator::{delimited, separated0, separated_pair},
@@ -34,13 +35,15 @@ fn parse_attribute<'i>(input: &mut &'i str) -> PResult<(&'i str, &'i str)> {
 /// HTML attributes
 #[derive(Debug, PartialEq, Eq)]
 pub struct Attributes<'i> {
-    kvs: HashMap<&'i str, &'i str>,
+    kvs: HashMap<&'i str, &'i str, BuildHasherDefault<FxHasher>>,
 }
 
 impl<'i> Attributes<'i> {
     fn parse(input: &mut &'i str) -> PResult<Self> {
-        let kvs = separated0(parse_attribute, (',', multispace0)).parse_next(input)?;
-        Ok(Self { kvs })
+        let kvs: Vec<_> = separated0(parse_attribute, (',', multispace0)).parse_next(input)?;
+        Ok(Self {
+            kvs: kvs.into_iter().collect(),
+        })
     }
 }
 
@@ -66,6 +69,7 @@ impl<'i> Tag<'i> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -89,7 +93,7 @@ mod tests {
         let input = r#"width="40", height = "30""#;
         let actual = Attributes::parse.parse(input).unwrap();
         let expected = Attributes {
-            kvs: HashMap::from([("width", "40"), ("height", "30")]),
+            kvs: [("width", "40"), ("height", "30")].into_iter().collect(),
         };
         assert_eq!(actual, expected)
     }
@@ -100,19 +104,20 @@ mod tests {
         let expected = Tag {
             tag_type: "a",
             attributes: Attributes {
-                kvs: HashMap::from([("href", "https://adamchalmers.com")]),
+                kvs: [("href", "https://adamchalmers.com")].into_iter().collect(),
             },
         };
         let actual = Tag::parse.parse(&input).unwrap();
         assert_eq!(expected, actual);
     }
+
     #[test]
     fn test_tag() {
         let input = r#"<div width="40", height="30">"#;
         let expected = Tag {
             tag_type: "div",
             attributes: Attributes {
-                kvs: HashMap::from([("width", "40"), ("height", "30")]),
+                kvs: [("width", "40"), ("height", "30")].into_iter().collect(),
             },
         };
         let actual = Tag::parse.parse(&input).unwrap();

@@ -4,4 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+rustc-hash = "1.1.0"
 winnow = "0.5.15"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "benchmark_html"
+harness = false
+
+[profile.bench]
+debug = true
