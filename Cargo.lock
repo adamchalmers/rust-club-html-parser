@@ -666,9 +666,8 @@ checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
 
 [[package]]
 name = "winnow"
-version = "0.5.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c2e3184b9c4e92ad5167ca73039d0c42476302ab603e2fec4487511f38ccefc"
+version = "0.5.17"
+source = "git+https://github.com/adamchalmers/winnow?branch=achalmers/generalize-hashmap-constraints#53462f4b233df8f5728a5a25c1b0bcc0fdd3ab7d"
 dependencies = [
  "memchr",
 ]

@@ -1,6 +1,5 @@
-use std::{collections::HashMap, hash::BuildHasherDefault};
+use std::{collections::HashMap, hash::BuildHasher};
 
-use rustc_hash::FxHasher;
 use winnow::{
     ascii::{alpha1, multispace0},
     combinator::{delimited, separated0, separated_pair},
@@ -33,29 +32,51 @@ fn parse_attribute<'i>(input: &mut &'i str) -> PResult<(&'i str, &'i str)> {
 }
 
 /// HTML attributes
-#[derive(Debug, PartialEq, Eq)]
-pub struct Attributes<'i> {
-    kvs: HashMap<&'i str, &'i str, BuildHasherDefault<FxHasher>>,
+#[derive(Debug)]
+pub struct Attributes<'i, S> {
+    kvs: HashMap<&'i str, &'i str, S>,
 }
 
-impl<'i> Attributes<'i> {
+impl<'i, S> PartialEq for Attributes<'i, S>
+where
+    S: BuildHasher,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.kvs == other.kvs
+    }
+}
+
+impl<'i, S> Attributes<'i, S>
+where
+    S: BuildHasher + Default,
+{
     fn parse(input: &mut &'i str) -> PResult<Self> {
-        let kvs: Vec<_> = separated0(parse_attribute, (',', multispace0)).parse_next(input)?;
-        Ok(Self {
-            kvs: kvs.into_iter().collect(),
-        })
+        let kvs = separated0(parse_attribute, (',', multispace0)).parse_next(input)?;
+        Ok(Self { kvs })
     }
 }
 
 /// An HTML open tag, like `<a href="google.com">`.
-#[derive(Debug, PartialEq, Eq)]
-pub struct Tag<'i> {
+#[derive(Debug)]
+pub struct Tag<'i, S> {
     /// Like 'div'
     tag_type: &'i str,
-    attributes: Attributes<'i>,
+    attributes: Attributes<'i, S>,
 }
 
-impl<'i> Tag<'i> {
+impl<'i, S> PartialEq for Tag<'i, S>
+where
+    S: BuildHasher,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.tag_type == other.tag_type && self.attributes == other.attributes
+    }
+}
+
+impl<'i, S> Tag<'i, S>
+where
+    S: BuildHasher + Default,
+{
     pub fn parse(input: &mut &'i str) -> PResult<Self> {
         let parse_parts = (alpha1, ' ', Attributes::parse);
         let parse_tag = parse_parts.map(|(tag_type, _space_char, attributes)| Self {
@@ -69,6 +90,8 @@ impl<'i> Tag<'i> {
 
 #[cfg(test)]
 mod tests {
+
+    use std::collections::hash_map::RandomState;
 
     use super::*;
 
@@ -91,7 +114,7 @@ mod tests {
     #[test]
     fn test_attributes() {
         let input = r#"width="40", height = "30""#;
-        let actual = Attributes::parse.parse(input).unwrap();
+        let actual = Attributes::<RandomState>::parse.parse(input).unwrap();
         let expected = Attributes {
             kvs: [("width", "40"), ("height", "30")].into_iter().collect(),
         };
@@ -107,14 +130,14 @@ mod tests {
                 kvs: [("href", "https://adamchalmers.com")].into_iter().collect(),
             },
         };
-        let actual = Tag::parse.parse(&input).unwrap();
+        let actual = Tag::<RandomState>::parse.parse(&input).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn test_tag() {
         let input = r#"<div width="40", height="30">"#;
-        let expected = Tag {
+        let expected = Tag::<RandomState> {
             tag_type: "div",
             attributes: Attributes {
                 kvs: [("width", "40"), ("height", "30")].into_iter().collect(),

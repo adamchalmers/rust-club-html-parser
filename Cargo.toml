@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 rustc-hash = "1.1.0"
-winnow = "0.5.15"
+winnow = { git = "https://github.com/adamchalmers/winnow", branch = "achalmers/generalize-hashmap-constraints" }
 
 [dev-dependencies]
 criterion = "0.5.1"
